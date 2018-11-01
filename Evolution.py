@@ -12,7 +12,7 @@ import random
 
 # 염색체를 생성하고 진화시키는 클래스
 class Chrom:
-    def init(self):
+    def __init__(self):
         pass
     
     # 첫번째 세대의 염색체를 생성하는 함수
