@@ -1,13 +1,14 @@
 
 # coding: utf-8
 
-# author: Kim Iheon
-# verson: 6
-# 신경망에 사이클이 생기지 않도록 염색체를 조절
-# 염색체를 신경망으로 발현하는 메소드 제작
+# In[35]:
 
+
+# author Kim Iheon
+# verson 7
 
 import random
+import Prototype_Network as net
 
 
 # 염색체를 생성하고 진화시키는 클래스
@@ -21,14 +22,14 @@ class Chrom:
     # param {Int} len_chrom 염색체의 길이
     # param {Int} num_in 입력 노드의 개수
     # param {Int} num_out 출력 노드의 개수
-    # return {List} gene_list 첫번째 세대의 모든 염색체를 리턴
+    # return {List} chrom_list 첫번째 세대의 모든 염색체를 리턴
     def create_chrom(self, num_net, num_node, len_chrom, num_in, num_out):
         self.NUM_NET = num_net
         self.NUM_NODE = num_node
         self.LEN_CHROM = len_chrom
         self.NUM_IN = num_in
         self.NUM_OUT = num_out
-        self.gene_list = []
+        self.chrom_list = []
         
         # 현재 세대 수
         self.generation = 1
@@ -37,7 +38,7 @@ class Chrom:
         _network = []
         
         # 한 세대의 모든 염색체
-        gene_list = []
+        chrom_list = []
         
         # 존재하는 모든 노드의 리스트
         _node_list = list(range(num_node))
@@ -61,25 +62,29 @@ class Chrom:
                 # 시냅스의 연결 여부
                 connect = random.randint(0, 1)
                 _network.append((synapse, connect))
-            gene_list.append(_network)
+            chrom_list.append(_network)
             
-        self.gene_list = gene_list
+        self.chrom_list = chrom_list
         
-        return gene_list
+        return chrom_list
     
-    # return {List} self.gene_list 현재 세대의 모든 염색체를 리턴
-    def get_gene(self):
-        return self.gene_list
+    # return {List} self.chrom_list 현재 세대의 모든 염색체를 리턴
+    def get_chrom(self):
+        return self.chrom_list
+    
+    # return {Int} self.generation 현재 세대를 받아옴
+    def get_generation(self):
+        return self.generation
     
     # 한 세대의 염색체들을 신경망으로 발현하는 함수
     # return {List} result_exp 한 세대를 신경망으로 모두 발현
     def expression(self):
         result_exp = []
         
-        # 현재 새대의 모든 개체를 받아옴
-        gene_list = self.gene_list
+        # 현재 새대의 모든 염색체를 받아옴
+        chrom_list = self.chrom_list
         
-        for chrom in gene_list:
+        for chrom in chrom_list:
             network = {}
             node_list = list(range(self.NUM_NODE))
             catch = []
@@ -116,7 +121,7 @@ class Chrom:
     def fitness(self, qual_func):
         
         # 현재 새대의 모든 개체를 받아옴
-        gene_list = self.gene_list
+        chrom_list = self.chrom_list
         
         # 품질의 최고값과 최저값
         max_qual = 1
@@ -130,17 +135,16 @@ class Chrom:
         werst_qual = max_qual
         
         for i in range(self.NUM_NET):
-            i_qual = qual_func(gene_list[i])
+            i_qual = qual_func(chrom_list[i])
             if best_qual < i_qual:
                 best_qual = i_qual
-            if werst_qual > qual_func(gene_list[i]):
+            if werst_qual > qual_func(chrom_list[i]):
                 werst_qual = i_qual
         
         # 각 염색체에 대해 적합도를 계산
         for i in range(self.NUM_NET):
-            i_qual = qual_func(gene_list[i])
-            i_fit = (werst_qual - i_qual) \
-                    + ((werst_qual - best_qual) / (k - 1))
+            i_qual = qual_func(chrom_list[i])
+            i_fit = (werst_qual - i_qual)                     + ((werst_qual - best_qual) / (k - 1))
             fit_list.append(i_fit)
         
         self.fit_list = fit_list
@@ -154,21 +158,21 @@ class Chrom:
         sel_list = []
         
         # 현재 새대의 모든 염색체를 받아옴
-        gene_list = self.gene_list
+        chrom_list = self.chrom_list
         
         # 이전에 fitness를 실행했어야함
         fit_list = self.fit_list
         
         # 선택하는 염색체수. 입력하지 않으면 1개 선택
         cycle = 1 if num == () else num[0]
-        point = random.uniform(0, sum(fitness(gene_list)))
+        point = random.uniform(0, sum(fitness(chrom_list)))
         sum_fit = 0
         
         for k in range(cycle):
             for i in range(self.NUM_NET):
                 sum_fit += fit_list[i]
                 if point < sum_fit:
-                    sel_list.append(self.gene_list[i])
+                    sel_list.append(self.chrom_list[i])
                     break
         
         return sel_list
@@ -208,7 +212,7 @@ class Chrom:
     # param {List} child 교차, 변이된 자식 염색체 집단
     # return {List} result_rep 대치 이후 염색체 집단
     def replacement(self, child_list):
-        result_rep = self.gene_list
+        result_rep = self.chrom_list
         
         # 대치 횟수
         rep_time = len(child_list)
@@ -236,7 +240,7 @@ class Chrom:
     # 각 연산을 수행해 기존 염색체 집단을 진화시킴
     # param {Int} num_child 생성할 자식 염색체의 수
     # param {Function} qual_func 염색체의 품질을 정하는 함수
-    # return {List} self.gene_list 진화 후 염색체 집단
+    # return {List} self.chrom_list 진화 후 염색체 집단
     def evolution(self, num_child, qual_func):
         child_list = []
         
@@ -259,10 +263,8 @@ class Chrom:
             child_list.append(child)
         
         # 기존 염색체를 생성된 자식 염색체로 대치
-        self.gene_list = self.replacement(child_list)
+        self.chrom_list = self.replacement(child_list)
         
         # 세대를 1 증가
         self.generation += 1
-        
-        return self.gene_list
 
