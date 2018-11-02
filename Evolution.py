@@ -1,11 +1,12 @@
 
 # coding: utf-8
 
-# In[35]:
+# In[54]:
 
 
 # author Kim Iheon
 # verson 7
+# 거의 모든 버그 픽스
 
 import random
 import Prototype_Network as net
@@ -61,7 +62,7 @@ class Chrom:
                 
                 # 시냅스의 연결 여부
                 connect = random.randint(0, 1)
-                _network.append((synapse, connect))
+                _network.append([synapse, connect])
             chrom_list.append(_network)
             
         self.chrom_list = chrom_list
@@ -113,8 +114,7 @@ class Chrom:
             result_exp.append(network)
         
         return result_exp
-                            
-                    
+             
     # 현재 세대 모든 염색체의 적합도 리스트를 리턴
     # param {Function} qual_func 염색체의 품질을 정하는 함수
     # return {List} fit_list 현재 세대의 모든 염색체의 적합도
@@ -138,15 +138,15 @@ class Chrom:
             i_qual = qual_func(chrom_list[i])
             if best_qual < i_qual:
                 best_qual = i_qual
-            if werst_qual > qual_func(chrom_list[i]):
+            if werst_qual > i_qual:
                 werst_qual = i_qual
         
         # 각 염색체에 대해 적합도를 계산
         for i in range(self.NUM_NET):
             i_qual = qual_func(chrom_list[i])
-            i_fit = (werst_qual - i_qual)                     + ((werst_qual - best_qual) / (k - 1))
+            i_fit = (i_qual - werst_qual)                     + ((best_qual - werst_qual) / 3)
             fit_list.append(i_fit)
-        
+            
         self.fit_list = fit_list
         
         return fit_list
@@ -165,7 +165,7 @@ class Chrom:
         
         # 선택하는 염색체수. 입력하지 않으면 1개 선택
         cycle = 1 if num == () else num[0]
-        point = random.uniform(0, sum(fitness(chrom_list)))
+        point = random.uniform(0, sum(fit_list))
         sum_fit = 0
         
         for k in range(cycle):
@@ -203,7 +203,7 @@ class Chrom:
         for k in range(len(chrom)):
             point = random.random()
             if point < p_mut:
-                result_mut[k][0] = 1 - chrom[k][0]
+                result_mut[k][1] = 1 - chrom[k][1]
         
         return result_mut
     
@@ -238,33 +238,41 @@ class Chrom:
         return result_rep
     
     # 각 연산을 수행해 기존 염색체 집단을 진화시킴
+    # param {int} num_evol 진화시킬 횟수
     # param {Int} num_child 생성할 자식 염색체의 수
     # param {Function} qual_func 염색체의 품질을 정하는 함수
-    # return {List} self.chrom_list 진화 후 염색체 집단
-    def evolution(self, num_child, qual_func):
-        child_list = []
+    # return {List} fitness_list 각 세대별 적합도
+    def evolution(self, num_evol, num_child, qual_func):
+        fitness_list = []
         
-        # 적합도를 계산
-        self.fitness(qual_func)
+        for k in range(num_evol):
+            
+            # 적합도를 계산
+            k_fit = self.fitness(qual_func)
+            fitness_list.append(k_fit)
+            
+            # 자식 염색체 리스트
+            child_list = []
+            for i in range(num_child):
+
+                # 교차 연산의 결과인 두 자식 중 하나를 선택
+                selec = random.randint(0, 1)
+
+                # 부모 염색체 선택
+                sel_list = self.selection(2)
+
+                # 교차후 자식 염색체
+                child = self.crossover(sel_list)[selec]
+
+                # 자식 염색체를 변이
+                child = self.mutation(child)
+                child_list.append(child)
+
+            # 기존 염색체를 생성된 자식 염색체로 대치
+            self.chrom_list = self.replacement(child_list)
+
+            # 세대를 1 증가
+            self.generation += 1
         
-        for i in range(num_child):
-            
-            # 교차 연산의 결과인 두 자식 중 하나를 선택
-            selec = random.randint(0, 1)
-            
-            # 부모 염색체 선택
-            sel_list = self.selection(2)
-            
-            # 교차후 자식 염색체
-            child = self.crossover(sel_list)[selec]
-            
-            # 자식 염색체를 변이
-            child = self.mutation(child)
-            child_list.append(child)
-        
-        # 기존 염색체를 생성된 자식 염색체로 대치
-        self.chrom_list = self.replacement(child_list)
-        
-        # 세대를 1 증가
-        self.generation += 1
+        return fitness_list 
 
