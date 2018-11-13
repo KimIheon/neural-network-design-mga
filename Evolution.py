@@ -1,10 +1,9 @@
 # author: Kim Iheon
-# version: 8
-# 최종 버그 픽스
+# version: 9
+# 출력하는 값 변화
 
 import random
 import Prototype_Network as net
-
 
 # import Network as net
 
@@ -67,13 +66,32 @@ class Chrom:
 
         return chrom_list
 
+    # 현재 세대의 염색체를 출력하는 함수
     # return {List} self.chrom_list 현재 세대의 모든 염색체를 리턴
     def get_chrom(self):
         return self.chrom_list
 
+    # 현재 세대를 출력하는 함수
     # return {Int} self.generation 현재 세대를 받아옴
     def get_generation(self):
         return self.generation
+
+    # 현재 개체의 품질을 평가하는 함수
+    # param {Function} qual_func 개체의 품질을 평가하는 함수
+    # return {List} qual_list 각 개체의 품질
+    def get_quality(self, qual_func):
+        chrom_list = self.expression()
+
+        qual_list = []
+
+        # 각 개체들의 품질을 평가한다
+        for i in range(self.NUM_NET):
+            i_qual = qual_func(chrom_list[i])
+            qual_list.append(i_qual)
+
+        self.qual_list = qual_list
+
+        return qual_list
 
     # 한 세대의 염색체들을 신경망으로 발현하는 함수
     # return {List} result_exp 한 세대를 신경망으로 모두 발현
@@ -114,27 +132,19 @@ class Chrom:
         return result_exp
 
     # 현재 세대 모든 염색체의 적합도 리스트를 리턴
-    # param {Function} qual_func 염색체의 품질을 정하는 함수
     # return {List} fit_list 현재 세대의 모든 염색체의 적합도
-    def fitness(self, qual_func):
+    def fitness(self):
 
         # 현재 새대의 모든 개체를 받아옴
         chrom_list = self.expression()
 
-        # 각 개체의 품질
-        qual_list = []
+        # 각 개체의 품질, 먼저 get_quality를 실행했어야 함
+        qual_list = self.qual_list
 
         # 적합도 리스트
         fit_list = []
 
         # 가장 좋은 품질과 가장 안 좋은 품질
-        best_qual = 0
-        werst_qual = 0
-
-        for i in range(self.NUM_NET):
-            i_qual = qual_func(chrom_list[i])
-            qual_list.append(i_qual)
-
         best_qual = min(qual_list)
         werst_qual = max(qual_list)
 
@@ -238,16 +248,18 @@ class Chrom:
     # param {int} num_evol 진화시킬 횟수
     # param {Int} num_child 생성할 자식 염색체의 수
     # param {Function} qual_func 염색체의 품질을 정하는 함수
-    # return {List} fitness_list 각 세대별 적합도
+    # return {List} all_qual 각 세대별 모든 개체의 품질
     def evolution(self, num_evol, num_child, qual_func):
-        fitness_list = []
+        all_qual = []
 
         for k in range(num_evol):
 
+            # 각 개체의 품질을 계산
+            k_qual = self.get_quality(qual_func)
+            all_qual.append(k_qual)
+
             # 적합도를 계산
-            k_fit = self.fitness(qual_func)
-            fitness_list.append(k_fit)
-            print(sorted(k_fit))
+            self.fitness()
 
             # 자식 염색체 리스트
             child_list = []
@@ -271,6 +283,13 @@ class Chrom:
 
             # 세대를 1 증가
             self.generation += 1
-            print(self.generation)
 
-        return fitness_list
+        last_qual = self.get_quality(qual_func)
+        all_qual.append(last_qual)
+
+        return all_qual
+
+
+def quality_chrom(chrom):
+    network = net.Network(chrom)
+    return network.quality(20)
