@@ -1,9 +1,10 @@
 # author: Kim Iheon
 # version: 9
-# 출력하는 값 변화
+# 논리적 오류 해결
 
 import random
 import Prototype_Network as net
+
 
 # import Network as net
 
@@ -27,6 +28,7 @@ class Chrom:
         self.NUM_IN = num_in
         self.NUM_OUT = num_out
         self.chrom_list = []
+        self.net_net = []
 
         # 현재 세대 수
         self.generation = 1
@@ -120,14 +122,19 @@ class Chrom:
             # 결손 표현들을 발현
             for i in range(self.NUM_NODE):
                 for j in range(self.NUM_NODE):
-                    if (i, j) not in catch:
 
-                        # 결손 표현이 발현될 확흏
-                        p_exp = 0.2
-                        if random.random() < p_exp:
-                            network[(i, j)] = random.random()
+                    # 사이클 제거
+                    if i < j:
+                        if (i, j) not in catch:
+
+                            # 결손 표현이 발현될 확흏
+                            p_exp = 0.2
+                            if random.random() < p_exp:
+                                network[(i, j)] = random.random()
 
             result_exp.append(network)
+
+        self.net_list = result_exp
 
         return result_exp
 
@@ -136,7 +143,7 @@ class Chrom:
     def fitness(self):
 
         # 현재 새대의 모든 개체를 받아옴
-        chrom_list = self.expression()
+        chrom_list = self.net_list
 
         # 각 개체의 품질, 먼저 get_quality를 실행했어야 함
         qual_list = self.qual_list
@@ -190,11 +197,12 @@ class Chrom:
     def crossover(self, sel_list):
         parent1 = sel_list[0]
         parent2 = sel_list[1]
-        cut_chrom = random.randint(0, self.LEN_CHROM)
+        cut_chrom1 = random.randint(0, len(parent1))
+        cut_chrom2 = random.randint(0, len(parent2))
 
         # 일점 교차 방식을 이용
-        child = [parent1[:cut_chrom] + parent2[cut_chrom:],
-                 parent2[:cut_chrom] + parent1[cut_chrom:]]
+        child = [parent1[:cut_chrom1] + parent2[cut_chrom2:],
+                 parent2[:cut_chrom2] + parent1[cut_chrom1:]]
 
         return child
 
@@ -202,15 +210,19 @@ class Chrom:
     # param {List} chrom 변이시킬 염색체
     # return {List} result_mut 변이 후 염색체
     def mutation(self, chrom):
+        num_node = self.NUM_NODE
         result_mut = chrom
 
         # 변이 확률
         p_mut = 0.001
 
         for k in range(len(chrom)):
-            point = random.random()
-            if point < p_mut:
-                result_mut[k] = (chrom[k][0], 1 - chrom[k][1])
+
+            # 시이클을 제거
+            if k // num_node > k % num_node:
+                point = random.random()
+                if point < p_mut:
+                    result_mut[k] = (chrom[k][0], 1 - chrom[k][1])
 
         return result_mut
 
@@ -248,15 +260,20 @@ class Chrom:
     # param {int} num_evol 진화시킬 횟수
     # param {Int} num_child 생성할 자식 염색체의 수
     # param {Function} qual_func 염색체의 품질을 정하는 함수
-    # return {List} all_qual 각 세대별 모든 개체의 품질
+    # return {Tuple} all_qual, all_net 각 세대별 모든 개체와 그 품질
     def evolution(self, num_evol, num_child, qual_func):
         all_qual = []
+        all_net = []
 
         for k in range(num_evol):
 
             # 각 개체의 품질을 계산
             k_qual = self.get_quality(qual_func)
             all_qual.append(k_qual)
+            all_net.append(self.net_list)
+
+            print(self.generation)
+            print(sorted(k_qual))
 
             # 적합도를 계산
             self.fitness()
@@ -284,12 +301,12 @@ class Chrom:
             # 세대를 1 증가
             self.generation += 1
 
+        # 마지막으로 생성된 세대를 평가함
         last_qual = self.get_quality(qual_func)
         all_qual.append(last_qual)
+        all_net.append(self.net_list)
 
-        return all_qual
+        print(self.generation)
+        print(sorted(last_qual))
 
-
-def quality_chrom(chrom):
-    network = net.Network(chrom)
-    return network.quality(20)
+        return all_qual, all_net

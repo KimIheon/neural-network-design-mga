@@ -1,16 +1,10 @@
-
-# coding: utf-8
-
-# In[ ]:
-
-
-#author Lee Yechan
+# author: Lee Yechan
 
 import random
 import scipy.special
 
-#[num_net, num_node, num_route, num_in, num_out] = map(int, input().split())
-num_net, num_node, num_sys, num_in, num_out = 2, 14, 100, 4, 4  #개체 수, 노드의 수, 연결의 수, 입력노드의 수, 출력노드의 수
+# [num_net, num_node, num_route, num_in, num_out] = map(int, input().split())
+num_net, num_node, num_sys, num_in, num_out = 70, 14, 50, 4, 4  #개체 수, 노드의 수, 연결의 수, 입력노드의 수, 출력노드의 수
 node_list = [i for i in range(num_node)]
 
 gene_list = []
@@ -32,33 +26,17 @@ class Node:   #노드 객체를 만든다
         pass
     pass
 
-def maker() :    #유전자를 만드는 함수
-    gene_list = []      #한 개체의 유전자를 모두 포함하는 리스트, 염색체라고 봐도 된다
-    for k in range(num_sys):        #연결의 수 만큼 for문을 돌린다
-        connect = random.randint(0, 1)        #연결여부를 결정한다. 무작위로 0 또는 1이 대입된다. 
-        [start_node, fin_node] = random.sample(node_list, 2)      #무작위로 2개의 노드를 골라 (처음 노드, 나중 노드) 순서쌍을 만든다. 
-        gene_list.append(((start_node, fin_node), connect))       #염색체에 ((처음 노드, 나중 노드), 연결여부)를 더한다.
-    return gene_list
 
 class Network() :       #신경망 개체
     def __init__ (self, gene_list) :         #생성자
-        self.pre_gene_list = gene_list   #입력받은 gene_list를 pre_gene_list에 대입한다. pre_gene_list는 원시 염색체로 나중에 수정된다.
-        self.weight = self.weight()      #연결강도를 설정한다
         self.network = [Node() for i in range(num_node)]    #노드 수 만큼 노드 객체를 만들어 신경망의 network에 대입한다
         self.learning = 100  #신경망의 학습률이다.
         self.path_check = False
         self.count = 0
-        gene_connect = {}    #유전자 연결
-        for i in self.pre_gene_list :    #원시 염색체의 모든 유전자에 대해서
-            if i[0] not in gene_connect.keys() :   #(처음 노드, 나중 노드) 순서쌍이 이전 것과 중복되지 않으면
-                gene_connect[i[0]] = i[1]      #'(처음 노드, 나중 노드) : 연결 여부'를 '유전자 연결' 사전에 저장한다
-        result = []   #결과 리스트
-        for i in gene_connect.keys() :   #'유전자 연결'사전에 있는 모든 키((처음 노드, 나중 노드) 순서쌍)에 대해서
-            result.append((i, gene_connect[i]))   #결과 리스트에 ((처음 노드, 나중 노드), 연결여부)를 더한다
-        self.gene_list = result
+        self.gene_list = gene_list.keys()
+        self.weight = gene_list
 
     def calculate(self, input_list) :  #계산함수
-        count = 0
         self.restart()   #계산을 시작하기 전에 모든 노드의 나중 값을 0으로 설정한다
         for i in range(num_in) :     #모든 입력노드의 인덱스 값에 대하여
             if int(input_list[i]) :      #만약 입력리스트 값이 1(True)이면
@@ -79,13 +57,12 @@ class Network() :       #신경망 개체
 
         while True :
             for i in self.gene_list :  #염색체의 모든 유전자에 대해서
-                if i[1] == 1 and i[0][0] not in range(num_node - num_out, num_node)  : #연결 여부가 1이고 처음 노드가 출력노드가 아니면
-                    self.network[i[0][1]].change_value(self.network[i[0][0]].value_inf * self.weight[(i[0][0], i[0][1])])
+                self.network[i[1]].change_value(self.network[i[0]].value_inf * self.weight[(i[0], i[1])] )
 
-                                    # 나중 노드의 나중 값에 (초기 노드의 초기 값 * 가중치)를 더한다
-                    count += 1 #신경망이 출력할 때까지 계산한 모든 연산의 수를 센다
+                                            # 나중 노드의 나중 값에 (초기 노드의 초기 값 * 가중치)를 더한다
 
-            for i in range(num_in, num_node - num_out) :  #입력, 출력노드를 제외한 모든 노드에서
+
+            for i in range(num_node - num_out) :  #입력, 출력노드를 제외한 모든 노드에서
                 if self.network[i].value_fin != 0 :
                     self.network[i].func()  #전이함수처리를 한다.
                 else :
@@ -101,7 +78,6 @@ class Network() :       #신경망 개체
             else :
                 for i in range(num_node) :
                     self.result[i].append(self.network[i].value_inf)
-        self.count = count
         return [self.network[i].value_inf for i in range(num_node - num_out, num_node)] #이 함수의 함숫값으로 
     
     def path(self) : #입력노드에서 출력노드로 가는 경로를 찾아주는 함수이다.
@@ -114,8 +90,7 @@ class Network() :       #신경망 개체
         for i in range(num_node) :
             connect[i] = []  #노드마다 갈 수 있는 이전 노드를 더해가기 위해 리스트를 만든다
         for i in self.gene_list :  #모든 유전자에 대해서
-            if i[1] == 1:  #노드간 연결이 되었으면
-                connect[i[0][1]].append(i[0][0])   #나중 노드 리스트에 이전 노드를 더한다.
+            connect[i[1]].append(i[0])   #나중 노드 리스트에 이전 노드를 더한다.
         cnt = 1 #처음 경로의 길이는 1로 시작한다.
 
         while True :
@@ -152,7 +127,8 @@ class Network() :       #신경망 개체
         weight_sum = {}  #분기점에서 어떤 노드의 가중치의 합을 나타낸다.
         for i in range(num_node) :
             for j in range(num_node) :  #모든 노드간 (i, j) 연결에 대해서
-                weight_sum[(i,j)] = self.weight[(i,j)]   #가중치의 합에 자기 자신의 가중치로 초기 설정한다.
+                if (i, j) in self.weight.keys() :
+                    weight_sum[(i,j)] = self.weight[(i,j)]   #가중치의 합에 자기 자신의 가중치로 초기 설정한다.
 
         for i in range(num_node - num_out, num_node) :  #모든 출력노드에 대해서
             error[i] = self.target_list[i+num_out - num_node] - output_list[i +num_out - num_node]
@@ -190,7 +166,8 @@ class Network() :       #신경망 개체
                     break
             for i in range(num_node) :
                 for j in range(num_node) :  #모든 노드간 (i, j) 연결에 대해서
-                    weight_sum[(i,j)] = self.weight[(i,j)]   #가중치의 합에 자기 자신의 가중치로 초기 설정한다.
+                    if (i, j) in self.weight.keys() :
+                        weight_sum[(i,j)] = self.weight[(i,j)]   #가중치의 합에 자기 자신의 가중치로 초기 설정한다.
 
 
         
@@ -198,21 +175,15 @@ class Network() :       #신경망 개체
         result = self.calculate(inputs_list)
         return ((result[0]-0.01)*8 + (result[1]-0.01)*4 + (result[2]-0.01)*2 + (result[3]-0.01))*100/98
 
-    def weight(self): #가중치를 무작위로 만드는 함수이다. 처음에 실행된다
-        global num_node
-        weight = {}
-        for i in range(num_node):
-            for j in range(num_node):
-                weight[(i, j)] = random.random()
-        return weight
     
     def restart(self) :  #모든 노드의 값을 초기화하는 함수이다. 계산을 하기 전에 쓰인다.
         for i in self.network :
             i.value_inf, i.value_fin = 0, 0
             
-    def quality(self, n) :   #신경망을 평가하는 함수이다. 값이 클수록 좋은 신경망이라는 것을 나타낸다.
+    def quality(self, n) :   #신경망을 평가하는 함수이다. 값이 클수록 나쁜 신경망이라는 것을 나타낸다.
         data = ['0000', '0001','0010','0011','0100','0101','0110','0111','1000', '1001','1010','1011','1100','1101','1110','1111']
         cnt = 0
+        print(1,end = ' ')
         for j in range(n) :
             for i in data :
                 self.train(i)
